@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Folder>
+    <name>name_1</name>
+    <visibility>0</visibility>
+    <open>0</open>
+    <description>name_2</description>
+    <NetworkLink>
+      <name>name_3</name>
+      <description>Live 3D view of local air traffic</description>
+      <refreshVisibility>1</refreshVisibility>
+      <flyToView>1</flyToView>
+      <refreshMode>onInterval</refreshMode>
+      <refreshInterval>5</refreshInterval>
+      <Link>
+        <href>http://localhost:8080/url_doesnt_matter</href>
+      </Link>
+    </NetworkLink>
+  </Folder>
+</kml>
