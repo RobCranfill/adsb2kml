@@ -1,6 +1,3 @@
-# Source - https://stackoverflow.com/a/64805257
-# Posted by PiBer2
-# Retrieved 2025-12-29, License - CC BY-SA 4.0
 
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import random
@@ -8,6 +5,7 @@ import time
 import threading
 
 import py1090
+
 
 # needed? i think not
 DUMP_COLLECTION_SLEEP_SEC = .1
@@ -21,13 +19,12 @@ DROP_CS_AFTER = 30 # if we haven't seen a given callsign in this many seconds
 _show_callsigns_ = True
 
 
-
 _airplanes = dict()
 _all_messages = 0
 _ok_messages = 0
 
 
-# FIXME 
+# FIXME
 _print_once = True
 
 
