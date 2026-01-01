@@ -1,9 +1,11 @@
 # adsb2kml
-Receive live ADS-B data from local aircraft, and display them in 3D in Google Earth.
+Receive live ADS-B data from local aircraft, and display them in 3D via Google Earth.
+
 
 # Concept of Operations
 A Python web server runs a background task to collect aircraft data from an attached Software-Defined Radio.
 It integrates this data, and on request from Google Earth, returns KML for display.
+
 
 # Requirements
   * Python 

@@ -1,14 +1,19 @@
+#
+# adsb2kml - a 3-D aircraft viewer
+# (c)2026 robcranfill@gmail.com
+# https://github.com/RobCranfill/adsb2kml
+#
 
+# stdlibs
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import random
 import time
 import threading
 
+# 3rd-party libs
 import py1090
 
 
-# needed? i think not
-DUMP_COLLECTION_SLEEP_SEC = .1
 
 # Stop drawing an a/c if we don't see it in this many seconds
 AP_TIME_EXPIRE = 15
@@ -18,28 +23,24 @@ _hex_to_callsign  = {}
 DROP_CS_AFTER = 30 # if we haven't seen a given callsign in this many seconds
 _show_callsigns_ = True
 
-
 _airplanes = dict()
 _all_messages = 0
 _ok_messages = 0
 
 
-# FIXME
-_print_once = True
-
-
 ################################################### classes
-
 
 class KMLACServer(BaseHTTPRequestHandler):
     """Class to serve aircraft KML data to GE."""
 
     global _airplanes
+    global _hex_to_callsign
 
     def do_GET(self):
+        """Handler for HTTP GET request"""
 
-        print("got a GET request...")
-        print(f"{_airplanes}")
+        print("\nHandling GET request...")
+        print(f"  Serving KML for {len(_airplanes)} aircraft....")
 
         self.send_response(200)
 
@@ -58,9 +59,17 @@ class KMLACServer(BaseHTTPRequestHandler):
             lat = ap.dump_msg.latitude
             lon = ap.dump_msg.longitude
             alt = ap.dump_msg.altitude
-            id = ap.dump_msg.hexident
 
-            apkml = floating_placemark(lat, lon, alt, id)
+            # TODO: look up callsign
+            callsign = ap.dump_msg.hexident
+            try:
+                callsign = _hex_to_callsign[ap.dump_msg.hexident].callsign
+                print(f" ** {type(callsign)=}")
+            except KeyError:
+                print("callsign not found")
+                # pass
+            print(f"  callsign: {callsign}")
+            apkml = floating_placemark(lat, lon, alt, callsign)
 
             self.wfile.write(bytes((apkml), "utf-8"))
 
@@ -85,12 +94,14 @@ def floating_placemark(lat, lon, alt, id_str):
         #  "  <range>500</range>\n" +
         #  " </LookAt>\n" +
 
+    # FIXME: icon doesn't work anymore
     result +=   "<styleUrl>#downArrowIcon</styleUrl>\n"
-    result +=  "<Point>\n"
-    result +=  " <altitudeMode>relativeToGround</altitudeMode>\n"
+
+    result +=   "<Point>\n"
+    result +=   " <altitudeMode>relativeToGround</altitudeMode>\n"
     result +=  f"<coordinates>{lon},{lat},{alt}</coordinates>\n"
-    result +=  "</Point>\n"
-    result +=  "</Placemark>\n"
+    result +=   "</Point>\n"
+    result +=   "</Placemark>\n"
 
     return result
 
@@ -116,8 +127,9 @@ class ap_info():
         global _hex_to_callsign
 
         self.callsign = callsign
+        print(f" assigning callsign {callsign} to {self.dump_msg.hexident}")
         _hex_to_callsign[self.dump_msg.hexident] = callsign_info(callsign)
-        print(f" Callsigns: {_hex_to_callsign}")
+        # print(f" now: {_hex_to_callsign=}")
 
 
 class callsign_info():
@@ -143,7 +155,7 @@ def tidy_callsigns():
 
     for hi, ci in _hex_to_callsign.items():
         if time.monotonic() - DROP_CS_AFTER > ci.last_seen:
-            print(f" *** drop callsign {ci.callsign}")
+            print(f"* Drop callsign {ci.callsign}")
             keys_to_drop.append(hi)
 
     for hi in keys_to_drop:
@@ -158,7 +170,6 @@ def doBackgroundTasks():
     global _airplanes
     global _all_messages
     global _ok_messages
-    global _print_once
 
     try:
         with py1090.Connection() as connection:
@@ -186,15 +197,11 @@ def doBackgroundTasks():
                         # to see everthing, use this:
                         # print(f"  {msg.__dict__=}")
 
-                        if _print_once:
-                            print(f"{msg.__dict__}")
-                            _print_once = False
-
                         hi = msg.hexident
                         if _airplanes.get(hi) is None:
-                            print(f"\nNew a/c {hi}")
+                            print(f"New a/c: {hi}")
                             _airplanes[hi] = ap_info(msg, time.monotonic())
-                            print(f"  {len(_airplanes)} {_airplanes=}")
+                            # print(f"  {len(_airplanes)} {_airplanes=}")
 
                     # should we only process a/c with lat/long, or all?
                     # I think maybe often (always?) if we have lat/lon we DON"T have callsign!
@@ -207,20 +214,19 @@ def doBackgroundTasks():
                         # print(f"  (looking at old cs {cs})")
                         if cs is None and msg.callsign is not None:
                             cs = msg.callsign.strip()
-                            print(f"\n  Got callsign for {msg.hexident=}: {cs}")
+                            print(f"Got callsign for {msg.hexident=}: {cs}")
                             ac.set_callsign(cs)
-                            print(f"  a/c now {ac}")
-                            print(f" {_airplanes=}")
+                            print(f"Found new callsign {cs}; now {ac}")
+                            # print(f" {_airplanes=}")
 
                 # clean up callsign dict, else will grow forever
                 tidy_callsigns()
 
-
-        time.sleep(DUMP_COLLECTION_SLEEP_SEC)
+        # I don't think we need to sleep at all.
+        # time.sleep(DUMP_COLLECTION_SLEEP_SEC)
 
     except ConnectionRefusedError:
         print("Can't connect! Is dump1090 running?")
-        keep_running = False
 
 
 # init data collection thread as deamon
